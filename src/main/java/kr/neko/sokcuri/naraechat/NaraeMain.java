@@ -6,14 +6,19 @@ import com.sun.jna.win32.StdCallLibrary;
 
 import kr.neko.sokcuri.naraechat.Keyboard.*;
 
+import kr.neko.sokcuri.naraechat.Obfuscated.ObfuscatedField;
+import net.minecraft.client.GameSettings;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.INestedGuiEventHandler;
+import net.minecraft.client.gui.fonts.FontResourceManager;
 import net.minecraft.client.gui.screen.ControlsScreen;
+import net.minecraft.client.gui.screen.LanguageScreen;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.resources.LanguageManager;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.util.InputMappings;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.settings.KeyModifier;
 import net.minecraftforge.common.MinecraftForge;
@@ -27,9 +32,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.BufferUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.*;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -40,6 +49,7 @@ public class NaraeMain
 {
     private static KeyboardLayout keyboard = Hangul_Set_2_Layout.getInstance();
     private static List<KeyboardLayout> keyboardArray = new ArrayList<>();
+    private static NaraeFont naraeFont = new NaraeFont();
     public static KeyBinding[] keyBindings;
 
     // Directly reference a log4j logger.
@@ -79,6 +89,48 @@ public class NaraeMain
         boolean ImmDisableIME(int ThreadID);
     }
 
+    private static ByteBuffer resizeBuffer(ByteBuffer buffer, int newCapacity) {
+        ByteBuffer newBuffer = BufferUtils.createByteBuffer(newCapacity);
+        buffer.flip();
+        newBuffer.put(buffer);
+        return newBuffer;
+    }
+
+    public static ByteBuffer ioResourceToByteBuffer(String resource, int bufferSize) throws IOException {
+        ByteBuffer buffer;
+        URL url = Thread.currentThread().getContextClassLoader().getResource(resource);
+        if (url == null)
+            throw new IOException("Classpath resource not found: " + resource);
+        File file = new File(url.getFile());
+        if (file.isFile()) {
+            FileInputStream fis = new FileInputStream(file);
+            FileChannel fc = fis.getChannel();
+            buffer = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+            fc.close();
+            fis.close();
+        } else {
+            buffer = BufferUtils.createByteBuffer(bufferSize);
+            InputStream source = url.openStream();
+            if (source == null)
+                throw new FileNotFoundException(resource);
+            try {
+                byte[] buf = new byte[8192];
+                while (true) {
+                    int bytes = source.read(buf, 0, buf.length);
+                    if (bytes == -1)
+                        break;
+                    if (buffer.remaining() < bytes)
+                        buffer = resizeBuffer(buffer, Math.max(buffer.capacity() * 2, buffer.capacity() - buffer.remaining() + bytes));
+                    buffer.put(buf, 0, bytes);
+                }
+                buffer.flip();
+            } finally {
+                source.close();
+            }
+        }
+        return buffer;
+    }
+
     @SubscribeEvent
     public void proxyHangulSpecificKey(GuiScreenEvent.KeyboardKeyPressedEvent.Pre event) {
 
@@ -86,6 +138,7 @@ public class NaraeMain
         int scanCode = event.getScanCode();
 
         Minecraft mc = Minecraft.getInstance();
+
 
         KeyModifier activeModifier = KeyModifier.getActiveModifier();
 
@@ -141,6 +194,25 @@ public class NaraeMain
 
     @SubscribeEvent
     public void onKeyPressed(GuiScreenEvent.KeyboardKeyPressedEvent.Pre event) {
+        if (event.getKeyCode() == GLFW_KEY_L) {
+            Minecraft mc = Minecraft.getInstance();
+            FontResourceManager fontResourceManager = mc.getFontResourceManager();
+            // boolean forceUnicodeFont = ObfuscatedField.$FontResourceManager.forceUnicodeFont.get(fontResourceManager);
+            // ObfuscatedField.$FontResourceManager.forceUnicodeFont.set(fontResourceManager, !forceUnicodeFont);
+            // naraeFont.resetFontDataMap();
+
+
+            String naraeFontName = "맑은 고딕";
+            String naraeFontFileName = "malgun.ttf";
+            float size = 12.0f;
+            float overSample = 4.0f;
+            float shiftX = -0.5f;
+            float shiftY = 0.0f;
+            String chars = "";
+            naraeFont.setFontData(naraeFontName, naraeFontFileName, size, overSample, shiftX, shiftY, chars);
+            naraeFont.setGlyphProvider("맑은 고딕");
+            // naraeFont.changeFont();
+        }
         keyboard.onKeyPressed(event);
     }
 
@@ -150,9 +222,27 @@ public class NaraeMain
     }
 
     @SubscribeEvent
+    public void guiOpened(GuiOpenEvent event) {
+        System.out.println(event.getGui().getClass().getName());
+        if (event.getGui() instanceof LanguageScreen) {
+            System.out.println("asdfasdfa");
+            LanguageScreen langaugeScreen = (LanguageScreen)event.getGui();
+            Screen parentScreen = ObfuscatedField.$LanguageScreen.parentScreen.get(langaugeScreen);
+            GameSettings game_settings_3 = ObfuscatedField.$LanguageScreen.game_settings_3.get(langaugeScreen);
+            LanguageManager languageManager = ObfuscatedField.$LanguageScreen.languageManager.get(langaugeScreen);
+            event.setGui(new LanguageScreenOverride(parentScreen, game_settings_3, languageManager));
+        }
+        //if (event.getGui() instanceof ) {
+
+        //}
+    }
+
+    @SubscribeEvent
     public void renderTick(TickEvent.RenderTickEvent event) {
+        naraeFont.renderTick(event);
         keyboard.renderTick(event);
     }
+
     private void setup(final FMLCommonSetupEvent event)
     {
         if (Platform.isWindows()) {
@@ -185,5 +275,7 @@ public class NaraeMain
         {
             ClientRegistry.registerKeyBinding(keyBindings[i]);
         }
+
+        // changeFont();
     }
 }
