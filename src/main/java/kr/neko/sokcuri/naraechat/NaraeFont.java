@@ -15,6 +15,7 @@ import org.lwjgl.stb.STBTTFontinfo;
 import org.lwjgl.stb.STBTruetype;
 import org.lwjgl.system.CallbackI;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -22,11 +23,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class NaraeFont {
-
     public class FontData {
         String fileName;
         ByteBuffer buffer;
@@ -91,7 +92,7 @@ public class NaraeFont {
 
 
         STBTTFontinfo info = STBTTFontinfo.create();
-        if (!STBTruetype.stbtt_InitFont(info, fontData.buffer)) {
+        if (!STBTruetype.stbtt_InitFont(info, fontData.buffer, STBTruetype.stbtt_GetFontOffsetForIndex(fontData.buffer, 0))) {
             try {
                 throw new IOException("Invalid ttf");
             } catch (IOException e) {
@@ -118,16 +119,13 @@ public class NaraeFont {
 
         Set<IGlyphProvider> providersSet = ObfuscatedField.$FontResourceManager.glyphProviders.get(fontResourceManager);
         List<IGlyphProvider> mcProviders = providersSet.stream().distinct().collect(Collectors.toList());
+
+        // 기본 GlyphProvider 추가
         mcProviders.forEach(x -> {
-            // System.out.println(x.getClass().getName());
             if (x.getClass().getName() == "net.minecraft.client.gui.fonts.providers.UnicodeTextureGlyphProvider") {
                 providers.add(x);
             }
         });
-
-        // providers.add(new DefaultGlyphProvider());
-        // providers.add(glyphProvider);
-        // splashList.put(naraeResLoc, providers);
 
         FontRenderer newRenderer = new FontRenderer(textureManager, new Font(textureManager, naraeResLoc));
         newRenderer.setGlyphProviders(providers);
@@ -137,30 +135,7 @@ public class NaraeFont {
             fontRenderers.put(naraeResLoc, newRenderer);
         }
 
-//        Stream.concat(fontRenderers.keySet().stream(), splashList.keySet().stream()).distinct().forEach((p_211508_2_) -> {
-//            List<IGlyphProvider> list1 = splashList.getOrDefault(p_211508_2_, Collections.emptyList());
-//            Collections.reverse(list1);
-//
-//            fontRenderers.computeIfAbsent(p_211508_2_, (p_211505_1_) -> {
-//                FontRenderer newRenderer = new FontRenderer(textureManager, new Font(textureManager, p_211505_1_));
-//                newRenderer.setGlyphProviders(list1);
-//                return newRenderer;
-//            });
-//
-//            FontRenderer newRenderer = new FontRenderer(textureManager, new Font(textureManager, naraeResLoc));
-//            newRenderer.setGlyphProviders(list1);
-//            fontRenderers.replace(naraeResLoc, newRenderer);
-//        });
-
-        // Collection<List<IGlyphProvider>> collection = splashList.values();
-//        Set<IGlyphProvider> set = ObfuscatedField.$FontResourceManager.glyphProviders.get(fontResourceManager);
-//        set.forEach(x -> {
-//
-//        });
-//        collection.forEach(set::addAll);
-
         mc.fontRenderer = mc.getFontResourceManager().getFontRenderer(new ResourceLocation("narae"));
-        // mc.fontRenderer.setGlyphProviders(providers);
 
     }
 
@@ -171,14 +146,14 @@ public class NaraeFont {
 
         String naraeFontName = "맑은 고딕";
         String naraeFontFileName = "malgun.ttf";
-        float size = 12.0f;
-        float overSample = 4.0f;
-        float shiftX = -0.5f;
-        float shiftY = 0.0f;
+//        float size = 12.0f;
+//        float overSample = 4.0f;
+//        float shiftX = -0.5f;
+//        float shiftY = 0.0f;
         String chars = "";
 
         if (!fontDataMap.containsKey(naraeFontName)) {
-            setFontData(naraeFontName, naraeFontFileName, size, overSample, shiftX, shiftY, chars);
+            setFontData(naraeFontName, naraeFontFileName, FontManager.instance.fontSize, FontManager.instance.overSample, FontManager.instance.shiftX, FontManager.instance.shiftY, chars);
             setGlyphProvider(naraeFontName);
         }
 
@@ -226,8 +201,24 @@ public class NaraeFont {
         ByteBuffer buffer = fontData.buffer;
         TrueTypeGlyphProvider truetypeglyphprovider = null;
 
+
+        STBTTFontinfo info = STBTTFontinfo.create();
+//        if (fontData.fileName.endsWith(".ttc") || fontData.fileName.endsWith(".TTC")) {
+//            int number = STBTruetype.stbtt_GetNumberOfFonts(buffer);
+//            if (!STBTruetype.stbtt_InitFont(info, buffer, STBTruetype.stbtt_GetFontOffsetForIndex(buffer, 0)));
+//            for (int i = 0; i < number; i++) {
+//
+//
+//                    throw new IOException("Invalid ttf");
+//
+//                break;
+//            }
+//            continue;
+//        }
+
+
         STBTTFontinfo stbttfontinfo = STBTTFontinfo.create();
-        if (!STBTruetype.stbtt_InitFont(stbttfontinfo, buffer)) {
+        if (!STBTruetype.stbtt_InitFont(info, buffer, STBTruetype.stbtt_GetFontOffsetForIndex(buffer, 0))) {
             try {
                 throw new IOException("Invalid ttf");
             } catch (IOException e) {

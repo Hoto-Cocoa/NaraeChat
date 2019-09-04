@@ -7,9 +7,9 @@ import com.sun.jna.win32.StdCallLibrary;
 import kr.neko.sokcuri.naraechat.Keyboard.*;
 
 import kr.neko.sokcuri.naraechat.Obfuscated.ObfuscatedField;
+import kr.neko.sokcuri.naraechat.config.ConfigHolder;
 import net.minecraft.client.GameSettings;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.fonts.FontResourceManager;
 import net.minecraft.client.gui.screen.ControlsScreen;
 import net.minecraft.client.gui.screen.LanguageScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -25,8 +25,10 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -43,17 +45,17 @@ import java.util.*;
 import static org.lwjgl.glfw.GLFW.*;
 
 // The value here should match an entry in the META-INF/mods.toml file
-@Mod("naraechat")
+@Mod(NaraeChat.MODID)
 @OnlyIn(Dist.CLIENT)
-public class NaraeMain
+public final class NaraeChat
 {
+    public static final String MODID = "naraechat";
+    public static final Logger LOGGER = LogManager.getLogger(MODID);
+
     private static KeyboardLayout keyboard = Hangul_Set_2_Layout.getInstance();
     private static List<KeyboardLayout> keyboardArray = new ArrayList<>();
-    private static NaraeFont naraeFont = new NaraeFont();
+    public static NaraeFont naraeFont = new NaraeFont();
     public static KeyBinding[] keyBindings;
-
-    // Directly reference a log4j logger.
-    private static final Logger LOGGER = LogManager.getLogger();
 
     private int getBindingKeyCode(int n) {
         return keyBindings[n].getKey().getKeyCode();
@@ -70,11 +72,15 @@ public class NaraeMain
         }
     }
 
-    public NaraeMain() {
+    public NaraeChat() {
         // Register the setup method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
+
         // Register the doClientStuff method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
+
+        final ModLoadingContext modLoadingContext = ModLoadingContext.get();
+        modLoadingContext.registerConfig(ModConfig.Type.CLIENT, ConfigHolder.CLIENT_SPEC);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -194,25 +200,6 @@ public class NaraeMain
 
     @SubscribeEvent
     public void onKeyPressed(GuiScreenEvent.KeyboardKeyPressedEvent.Pre event) {
-        if (event.getKeyCode() == GLFW_KEY_L) {
-            Minecraft mc = Minecraft.getInstance();
-            FontResourceManager fontResourceManager = mc.getFontResourceManager();
-            // boolean forceUnicodeFont = ObfuscatedField.$FontResourceManager.forceUnicodeFont.get(fontResourceManager);
-            // ObfuscatedField.$FontResourceManager.forceUnicodeFont.set(fontResourceManager, !forceUnicodeFont);
-            // naraeFont.resetFontDataMap();
-
-
-            String naraeFontName = "맑은 고딕";
-            String naraeFontFileName = "malgun.ttf";
-            float size = 12.0f;
-            float overSample = 4.0f;
-            float shiftX = -0.5f;
-            float shiftY = 0.0f;
-            String chars = "";
-            naraeFont.setFontData(naraeFontName, naraeFontFileName, size, overSample, shiftX, shiftY, chars);
-            naraeFont.setGlyphProvider("맑은 고딕");
-            // naraeFont.changeFont();
-        }
         keyboard.onKeyPressed(event);
     }
 
@@ -223,8 +210,11 @@ public class NaraeMain
 
     @SubscribeEvent
     public void guiOpened(GuiOpenEvent event) {
-        System.out.println(event.getGui().getClass().getName());
-        if (event.getGui() instanceof LanguageScreen) {
+
+        if (event.getGui() instanceof LanguageScreenOverride) {
+
+        }
+        else if (event.getGui() instanceof LanguageScreen) {
             System.out.println("asdfasdfa");
             LanguageScreen langaugeScreen = (LanguageScreen)event.getGui();
             Screen parentScreen = ObfuscatedField.$LanguageScreen.parentScreen.get(langaugeScreen);

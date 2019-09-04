@@ -115,6 +115,13 @@ public final class ObfuscatedField<O, T> {
             glyphProviders              = new ObfuscatedField("glyphProviders", "field_211194_f", Font.class, List.class);
         }
     }
+    public static class $AwtFont {
+        public static final ObfuscatedField<java.awt.Font, sun.font.Font2DHandle> font2DHandle;
+
+        static {
+            font2DHandle                = new ObfuscatedField("font2DHandle", "font2DHandle", java.awt.Font.class, sun.font.Font2DHandle.class);
+        }
+    }
 
     public ObfuscatedField(String deobfName, String obfName, Class<O> owner, Class<T> retClass) {
         this.obfName = obfName;
